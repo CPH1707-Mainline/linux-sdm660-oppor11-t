@@ -842,12 +842,18 @@ struct dpu_hw_sspp *dpu_rm_reserve_sspp(struct dpu_rm *rm,
 {
 	struct dpu_hw_sspp *hw_sspp = NULL;
 
-	if (!reqs->scale && !reqs->yuv)
-		hw_sspp = dpu_rm_try_sspp(rm, global_state, crtc, reqs, SSPP_TYPE_DMA);
+	/*
+	 * R11T/SDM660: DPU 3.2 only routes VIG and RGB pipes into CTL_LAYER_0.
+	 * The higher DMA pipes (SSPP_DMA0..) land in CTL_LAYER_EXT bits that
+	 * this generation does not implement, so a plane placed there scans
+	 * out nothing.  Prefer VIG, then RGB, and only fall back to DMA when
+	 * nothing else is free.
+	 */
+	hw_sspp = dpu_rm_try_sspp(rm, global_state, crtc, reqs, SSPP_TYPE_VIG);
 	if (!hw_sspp && !reqs->yuv)
 		hw_sspp = dpu_rm_try_sspp(rm, global_state, crtc, reqs, SSPP_TYPE_RGB);
 	if (!hw_sspp)
-		hw_sspp = dpu_rm_try_sspp(rm, global_state, crtc, reqs, SSPP_TYPE_VIG);
+		hw_sspp = dpu_rm_try_sspp(rm, global_state, crtc, reqs, SSPP_TYPE_DMA);
 
 	return hw_sspp;
 }

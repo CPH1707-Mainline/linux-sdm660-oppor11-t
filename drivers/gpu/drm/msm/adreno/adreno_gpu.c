@@ -416,12 +416,12 @@ int adreno_get_param(struct msm_gpu *gpu, struct msm_context *ctx,
 		*value = gpu->suspend_count;
 		return 0;
 	case MSM_PARAM_VA_START:
-		if (vm == gpu->vm)
+		if (!vm || vm == gpu->vm)
 			return UERR(EINVAL, drm, "requires per-process pgtables");
 		*value = vm->mm_start;
 		return 0;
 	case MSM_PARAM_VA_SIZE:
-		if (vm == gpu->vm)
+		if (!vm || vm == gpu->vm)
 			return UERR(EINVAL, drm, "requires per-process pgtables");
 		*value = vm->mm_range;
 		return 0;
@@ -497,7 +497,11 @@ int adreno_set_param(struct msm_gpu *gpu, struct msm_context *ctx,
 		return msm_context_set_sysprof(ctx, gpu, value);
 	case MSM_PARAM_EN_VM_BIND:
 		/* We can only support VM_BIND with per-process pgtables: */
-		if (ctx->vm == gpu->vm)
+		if (!gpu->funcs->create_private_vm)
+			return UERR(EINVAL, drm, "requires per-process pgtables");
+
+		/* ctx->vm is lazily created, so only compare once it exists: */
+		if (ctx->vm && ctx->vm == gpu->vm)
 			return UERR(EINVAL, drm, "requires per-process pgtables");
 
 		/*
